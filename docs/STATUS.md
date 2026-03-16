@@ -5,13 +5,16 @@
 - 接入 MySQL 连接池与 schema 初始化脚本
 - 加入管理员种子账号与 JWT 登录
 - 实现项目 CRUD 接口
+- 增加项目信号/指标明细接口：`GET /api/projects/:id/signals`、`GET /api/projects/:id/indicators`
 - 实现 Binance K 线抓取与 MACD 计算模块骨架
 - 实现手动同步接口与 node-cron 定时任务骨架
 - 完成 `/api/health` 健康检查
-- 补充 README 和 `.env.example`
+- 初始化 Vue 3 + Element Plus 前端管理后台
+- 前端已支持登录、项目列表、创建项目、手动同步、项目详情、最近信号与指标展示
+- 补充 README 和前端说明
 
 ## 待继续
-1. 前端管理后台
+1. 前端增加编辑项目 / 停用项目 / 更细的错误态处理
 2. 用户创建/改密/权限分配
 3. 更精细的持仓与收益核算
 4. 用真实业务样本校准交易信号

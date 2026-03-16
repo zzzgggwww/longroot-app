@@ -17,9 +17,11 @@
 - 管理员种子账号方案
 - 登录接口 `POST /api/auth/login`
 - 项目 CRUD 接口 `GET/POST/PUT/DELETE /api/projects`
+- 项目明细接口 `GET /api/projects/:id/signals` / `GET /api/projects/:id/indicators`
 - Binance K 线抓取 + MACD 计算模块骨架
 - 手动/定时市场同步接口
 - 健康检查 `GET /api/health`
+- Vue 3 + Element Plus 前端管理后台（登录、项目列表、创建项目、同步、详情）
 
 ## 快速开始
 
@@ -38,7 +40,7 @@ npm run db:init
 npm run seed:admin
 ```
 
-### 3. 启动服务
+### 3. 启动后端服务
 
 ```bash
 npm run dev
@@ -47,6 +49,16 @@ npm start
 ```
 
 默认监听：`http://127.0.0.1:3000`
+
+### 4. 启动前端管理后台
+
+```bash
+cd /home/zzzgggwww/openclaw-work/longroot-app/frontend
+npm install
+npm run dev
+```
+
+默认地址：`http://127.0.0.1:5173`
 
 ## 默认管理员账号
 
@@ -99,7 +111,7 @@ curl -X POST http://127.0.0.1:3000/api/market/sync \
 
 ## 当前限制
 
-- 前端页面尚未实现，仅保留目录
+- 前端暂未接入路由、鉴权过期自动刷新、编辑项目等更完整能力
 - 用户管理/改密未实现
 - 信号规则是 PRD 对应的 MVP 近似实现，仍可继续校准 Excel 细节
 - 未接入 PM2 / Docker / 单元测试

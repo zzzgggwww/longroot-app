@@ -64,6 +64,30 @@ export async function getProjectById(id) {
   return rows[0];
 }
 
+export async function listProjectSignals(id, limit = 20) {
+  await getProjectById(id);
+  return query(
+    `SELECT id, project_id, signal_time, action, amount, price, reason, created_at
+     FROM trade_signals
+     WHERE project_id = :id
+     ORDER BY signal_time DESC, id DESC
+     LIMIT :limit`,
+    { id, limit: Number(limit) }
+  );
+}
+
+export async function listProjectIndicators(id, limit = 20) {
+  await getProjectById(id);
+  return query(
+    `SELECT id, project_id, candle_time, price, dif, dea, created_at
+     FROM price_indicators
+     WHERE project_id = :id
+     ORDER BY candle_time DESC, id DESC
+     LIMIT :limit`,
+    { id, limit: Number(limit) }
+  );
+}
+
 export async function createProject(payload) {
   const data = validateProjectInput(payload);
   const projectCode = await generateProjectCode(data.symbol, data.period);

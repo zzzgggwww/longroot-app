@@ -1,0 +1,453 @@
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const API_BASE = 'http://127.0.0.1:3000/api';
+const token = ref(localStorage.getItem('longroot_token') || '');
+const currentUser = ref(safeParse(localStorage.getItem('longroot_user')));
+const loginLoading = ref(false);
+const projectLoading = ref(false);
+const syncLoading = ref(false);
+const saveLoading = ref(false);
+const detailLoading = ref(false);
+const selectedProjectId = ref(null);
+const projects = ref([]);
+const projectDetail = ref(null);
+const projectSignals = ref([]);
+const projectIndicators = ref([]);
+
+const loginForm = reactive({
+  username: 'admin',
+  password: 'Admin123456'
+});
+
+const projectForm = reactive({
+  symbol: 'BTCUSDT',
+  period: 'H',
+  buyAmountPerOrder: 100,
+  takeProfitMultiple: 2,
+  sellDivisor: 4,
+  status: 1
+});
+
+const metrics = computed(() => {
+  const list = projects.value;
+  return {
+    total: list.length,
+    enabled: list.filter((item) => Number(item.status) === 1).length,
+    invested: sum(list, 'total_invested'),
+    value: sum(list, 'position_value')
+  };
+});
+
+const canOperate = computed(() => Boolean(token.value));
+
+function safeParse(value) {
+  try {
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function sum(list, key) {
+  return list.reduce((total, item) => total + Number(item[key] || 0), 0);
+}
+
+function money(value, digits = 2) {
+  return Number(value || 0).toFixed(digits);
+}
+
+function formatTime(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+}
+
+function signalType(action) {
+  if (action === 'BUY') return 'success';
+  if (action === 'SELL') return 'danger';
+  return 'info';
+}
+
+async function request(path, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  if (token.value) {
+    headers.Authorization = `Bearer ${token.value}`;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout(false);
+    }
+    throw new Error(data.message || `请求失败: ${response.status}`);
+  }
+
+  return data;
+}
+
+async function handleLogin() {
+  loginLoading.value = true;
+  try {
+    const data = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(loginForm)
+    });
+    token.value = data.token;
+    currentUser.value = data.user;
+    localStorage.setItem('longroot_token', data.token);
+    localStorage.setItem('longroot_user', JSON.stringify(data.user));
+    ElMessage.success('登录成功');
+    await loadProjects();
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    loginLoading.value = false;
+  }
+}
+
+function logout(showMessage = true) {
+  token.value = '';
+  currentUser.value = null;
+  projects.value = [];
+  projectDetail.value = null;
+  projectSignals.value = [];
+  projectIndicators.value = [];
+  selectedProjectId.value = null;
+  localStorage.removeItem('longroot_token');
+  localStorage.removeItem('longroot_user');
+  if (showMessage) ElMessage.success('已退出登录');
+}
+
+async function loadProjects(selectFirst = true) {
+  if (!canOperate.value) return;
+
+  projectLoading.value = true;
+  try {
+    const data = await request('/projects');
+    projects.value = data;
+
+    const targetId = selectedProjectId.value && data.some((item) => item.id === selectedProjectId.value)
+      ? selectedProjectId.value
+      : (selectFirst ? data[0]?.id : null);
+
+    if (targetId) {
+      await selectProject(targetId);
+    } else {
+      projectDetail.value = null;
+      projectSignals.value = [];
+      projectIndicators.value = [];
+      selectedProjectId.value = null;
+    }
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    projectLoading.value = false;
+  }
+}
+
+async function selectProject(id) {
+  if (!id) return;
+  detailLoading.value = true;
+  try {
+    selectedProjectId.value = id;
+    const [detail, signals, indicators] = await Promise.all([
+      request(`/projects/${id}`),
+      request(`/projects/${id}/signals?limit=20`),
+      request(`/projects/${id}/indicators?limit=20`)
+    ]);
+    projectDetail.value = detail;
+    projectSignals.value = signals;
+    projectIndicators.value = indicators;
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+async function createProject() {
+  saveLoading.value = true;
+  try {
+    await request('/projects', {
+      method: 'POST',
+      body: JSON.stringify(projectForm)
+    });
+    ElMessage.success('项目已创建');
+    await loadProjects();
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    saveLoading.value = false;
+  }
+}
+
+async function syncAll() {
+  syncLoading.value = true;
+  try {
+    const data = await request('/market/sync', { method: 'POST' });
+    const okCount = (data.results || []).filter((item) => item.ok).length;
+    ElMessage.success(`同步完成，成功 ${okCount} 个项目`);
+    await loadProjects(false);
+    if (selectedProjectId.value) await selectProject(selectedProjectId.value);
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    syncLoading.value = false;
+  }
+}
+
+async function syncOne(id) {
+  syncLoading.value = true;
+  try {
+    await request(`/market/sync/${id}`, { method: 'POST' });
+    ElMessage.success('单项目同步完成');
+    await loadProjects(false);
+    await selectProject(id);
+  } catch (error) {
+    ElMessage.error(error.message);
+  } finally {
+    syncLoading.value = false;
+  }
+}
+
+async function removeProject(id) {
+  try {
+    await ElMessageBox.confirm('删除后会清空该项目的持仓、指标和信号记录，继续吗？', '确认删除', {
+      type: 'warning'
+    });
+    await request(`/projects/${id}`, { method: 'DELETE' });
+    ElMessage.success('项目已删除');
+    await loadProjects();
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败');
+    }
+  }
+}
+
+onMounted(async () => {
+  if (token.value) {
+    await loadProjects();
+  }
+});
+</script>
+
+<template>
+  <div v-if="!token" class="auth-wrap">
+    <el-card class="auth-card">
+      <h1 class="brand-title">LongRoot 控制台</h1>
+      <p class="brand-subtitle">先登录，再管理项目、查看信号、手动触发市场同步。</p>
+
+      <el-form label-position="top" @submit.prevent="handleLogin">
+        <el-form-item label="用户名">
+          <el-input v-model="loginForm.username" placeholder="admin" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="loginForm.password" show-password placeholder="请输入密码" @keyup.enter="handleLogin" />
+        </el-form-item>
+        <el-button type="primary" :loading="loginLoading" style="width: 100%" @click="handleLogin">
+          登录
+        </el-button>
+      </el-form>
+    </el-card>
+  </div>
+
+  <div v-else class="page-shell">
+    <div class="page-header">
+      <div>
+        <h1>LongRoot 管理后台</h1>
+        <p>已登录用户：{{ currentUser?.username }} · 聚合查看项目、仓位和最近信号。</p>
+      </div>
+      <div class="top-actions">
+        <el-button @click="loadProjects">刷新</el-button>
+        <el-button type="primary" :loading="syncLoading" @click="syncAll">同步全部项目</el-button>
+        <el-button type="danger" plain @click="logout">退出</el-button>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">项目总数</div>
+        <div class="metric-value">{{ metrics.total }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">启用项目</div>
+        <div class="metric-value">{{ metrics.enabled }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">累计投入</div>
+        <div class="metric-value">{{ money(metrics.invested) }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">当前持仓市值</div>
+        <div class="metric-value">{{ money(metrics.value) }}</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="side-stack">
+        <el-card class="panel-card">
+          <template #header>
+            <div class="top-actions" style="justify-content: space-between; width: 100%">
+              <span class="block-title">项目列表</span>
+              <el-tag type="info">{{ projects.length }} 个</el-tag>
+            </div>
+          </template>
+
+          <el-table v-loading="projectLoading" :data="projects" height="440" @row-click="(row) => selectProject(row.id)">
+            <el-table-column prop="project_code" label="项目编码" min-width="150" />
+            <el-table-column prop="symbol" label="交易对" min-width="110" />
+            <el-table-column prop="period" label="周期" width="80" />
+            <el-table-column label="状态" width="90">
+              <template #default="scope">
+                <el-tag :type="Number(scope.row.status) === 1 ? 'success' : 'info'">
+                  {{ Number(scope.row.status) === 1 ? '启用' : '停用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="最新信号" min-width="120">
+              <template #default="scope">
+                <el-tag v-if="scope.row.latest_signal_action" :type="signalType(scope.row.latest_signal_action)">
+                  {{ scope.row.latest_signal_action }}
+                </el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180" fixed="right">
+              <template #default="scope">
+                <div class="top-actions">
+                  <el-button link type="primary" @click.stop="syncOne(scope.row.id)">同步</el-button>
+                  <el-button link type="danger" @click.stop="removeProject(scope.row.id)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+
+        <el-card class="panel-card">
+          <template #header>
+            <span class="block-title">创建项目</span>
+          </template>
+
+          <el-form label-position="top">
+            <el-row :gutter="12">
+              <el-col :span="12">
+                <el-form-item label="交易对">
+                  <el-input v-model="projectForm.symbol" placeholder="BTCUSDT" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="周期">
+                  <el-select v-model="projectForm.period" style="width: 100%">
+                    <el-option label="H" value="H" />
+                    <el-option label="D" value="D" />
+                    <el-option label="W" value="W" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="12">
+              <el-col :span="8">
+                <el-form-item label="每次买入金额">
+                  <el-input-number v-model="projectForm.buyAmountPerOrder" :min="0" :precision="2" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="限红倍数">
+                  <el-input-number v-model="projectForm.takeProfitMultiple" :min="0" :precision="2" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="卖出除数">
+                  <el-input-number v-model="projectForm.sellDivisor" :min="1" :precision="2" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="状态">
+              <el-radio-group v-model="projectForm.status">
+                <el-radio :value="1">启用</el-radio>
+                <el-radio :value="0">停用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <div class="form-actions">
+              <el-button type="primary" :loading="saveLoading" @click="createProject">创建项目</el-button>
+            </div>
+          </el-form>
+        </el-card>
+      </div>
+
+      <div class="side-stack">
+        <el-card class="panel-card" v-loading="detailLoading">
+          <template #header>
+            <div class="top-actions" style="justify-content: space-between; width: 100%">
+              <span class="block-title">项目详情</span>
+              <el-tag v-if="projectDetail" :type="Number(projectDetail.status) === 1 ? 'success' : 'info'">
+                {{ Number(projectDetail.status) === 1 ? '启用' : '停用' }}
+              </el-tag>
+            </div>
+          </template>
+
+          <div v-if="projectDetail" class="project-meta">
+            <div class="meta-item"><div class="label">项目编码</div><div class="value">{{ projectDetail.project_code }}</div></div>
+            <div class="meta-item"><div class="label">交易对</div><div class="value">{{ projectDetail.symbol }}</div></div>
+            <div class="meta-item"><div class="label">周期</div><div class="value">{{ projectDetail.period }}</div></div>
+            <div class="meta-item"><div class="label">持仓数量</div><div class="value">{{ money(projectDetail.position_qty, 8) }}</div></div>
+            <div class="meta-item"><div class="label">累计投入</div><div class="value">{{ money(projectDetail.total_invested) }}</div></div>
+            <div class="meta-item"><div class="label">累计变现</div><div class="value">{{ money(projectDetail.total_realized) }}</div></div>
+            <div class="meta-item"><div class="label">当前持仓市值</div><div class="value">{{ money(projectDetail.position_value) }}</div></div>
+            <div class="meta-item"><div class="label">最大敞口</div><div class="value">{{ money(projectDetail.max_exposure) }}</div></div>
+            <div class="meta-item"><div class="label">最大损失</div><div class="value">{{ money(projectDetail.max_loss) }}</div></div>
+            <div class="meta-item"><div class="label">更新时间</div><div class="value">{{ formatTime(projectDetail.updated_at) }}</div></div>
+          </div>
+          <el-empty v-else description="先从左侧选择一个项目" />
+        </el-card>
+
+        <el-card class="panel-card">
+          <template #header>
+            <span class="block-title">最近交易信号</span>
+          </template>
+          <el-table :data="projectSignals" height="240" empty-text="暂无信号">
+            <el-table-column prop="signal_time" label="时间" min-width="160">
+              <template #default="scope">{{ formatTime(scope.row.signal_time) }}</template>
+            </el-table-column>
+            <el-table-column label="动作" width="100">
+              <template #default="scope">
+                <el-tag :type="signalType(scope.row.action)">{{ scope.row.action }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="amount" label="金额/数量" min-width="100" />
+            <el-table-column prop="price" label="价格" min-width="100" />
+            <el-table-column prop="reason" label="原因" min-width="240" show-overflow-tooltip />
+          </el-table>
+        </el-card>
+
+        <el-card class="panel-card">
+          <template #header>
+            <span class="block-title">最近指标</span>
+          </template>
+          <el-table :data="projectIndicators" height="240" empty-text="暂无指标">
+            <el-table-column prop="candle_time" label="K线时间" min-width="160">
+              <template #default="scope">{{ formatTime(scope.row.candle_time) }}</template>
+            </el-table-column>
+            <el-table-column prop="price" label="价格" min-width="100" />
+            <el-table-column prop="dif" label="DIF" min-width="100" />
+            <el-table-column prop="dea" label="DEA" min-width="100" />
+          </el-table>
+        </el-card>
+      </div>
+    </div>
+  </div>
+</template>
