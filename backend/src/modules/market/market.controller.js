@@ -1,0 +1,15 @@
+import { asyncHandler } from '../../utils/async-handler.js';
+import { query } from '../../db/pool.js';
+import { syncAllProjectsMarket, syncProjectMarket } from './market.service.js';
+import { httpError } from '../../utils/http-error.js';
+
+export const postSyncAll = asyncHandler(async (req, res) => {
+  res.json({ results: await syncAllProjectsMarket() });
+});
+
+export const postSyncProject = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const rows = await query('SELECT * FROM projects WHERE id = :id LIMIT 1', { id });
+  if (!rows.length) throw httpError(404, '项目不存在');
+  res.json(await syncProjectMarket(rows[0]));
+});

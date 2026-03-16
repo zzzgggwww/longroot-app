@@ -1,0 +1,63 @@
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+  status TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  project_code VARCHAR(32) NOT NULL UNIQUE,
+  symbol VARCHAR(32) NOT NULL,
+  period ENUM('H', 'D', 'W') NOT NULL,
+  buy_amount_per_order DECIMAL(18,8) NOT NULL DEFAULT 0,
+  take_profit_multiple DECIMAL(18,8) NOT NULL DEFAULT 0,
+  take_profit_amount DECIMAL(18,8) NOT NULL DEFAULT 0,
+  sell_divisor DECIMAL(18,8) NOT NULL DEFAULT 1,
+  status TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS price_indicators (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  project_id BIGINT NOT NULL,
+  symbol VARCHAR(32) NOT NULL,
+  period ENUM('H', 'D', 'W') NOT NULL,
+  candle_time DATETIME NOT NULL,
+  price DECIMAL(18,8) NOT NULL,
+  dif DECIMAL(18,8) NOT NULL,
+  dea DECIMAL(18,8) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_project_candle (project_id, candle_time),
+  KEY idx_project_time (project_id, candle_time),
+  CONSTRAINT fk_price_indicators_project FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE TABLE IF NOT EXISTS trade_signals (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  project_id BIGINT NOT NULL,
+  signal_time DATETIME NOT NULL,
+  action ENUM('BUY', 'SELL', 'HOLD') NOT NULL,
+  amount DECIMAL(18,8) NOT NULL DEFAULT 0,
+  price DECIMAL(18,8) NOT NULL DEFAULT 0,
+  reason TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_signal_project_time (project_id, signal_time),
+  CONSTRAINT fk_trade_signals_project FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE TABLE IF NOT EXISTS positions (
+  project_id BIGINT PRIMARY KEY,
+  total_invested DECIMAL(18,8) NOT NULL DEFAULT 0,
+  total_realized DECIMAL(18,8) NOT NULL DEFAULT 0,
+  position_qty DECIMAL(28,12) NOT NULL DEFAULT 0,
+  position_value DECIMAL(18,8) NOT NULL DEFAULT 0,
+  max_exposure DECIMAL(18,8) NOT NULL DEFAULT 0,
+  max_loss DECIMAL(18,8) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_positions_project FOREIGN KEY (project_id) REFERENCES projects(id)
+);
