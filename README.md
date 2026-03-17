@@ -21,7 +21,7 @@
 - Binance K 线抓取 + MACD 计算模块骨架
 - 手动/定时市场同步接口
 - 健康检查 `GET /api/health`
-- Vue 3 + Element Plus 前端管理后台（登录、项目列表、创建项目、同步、详情）
+- React + Ant Design Pro 前端管理后台（登录、项目列表、创建项目、编辑、同步、详情）
 
 ## 快速开始
 

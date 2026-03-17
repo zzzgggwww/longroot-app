@@ -10,7 +10,7 @@
 - 按 Excel 规则校准信号：补入 DIF 近 3 周期峰值、DEA 回落卖出、限红拦截、涨跌价格因子
 - 实现手动同步接口与 node-cron 定时任务骨架
 - 完成 `/api/health` 健康检查
-- 初始化 Vue 3 + Element Plus 前端管理后台
+- 已将前端 UI 框架切换为 React + Ant Design Pro
 - 前端已支持登录、项目列表、创建项目、编辑项目、手动同步、项目详情、最近信号与指标展示
 - 补充 README 和前端说明
 

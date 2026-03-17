@@ -133,12 +133,14 @@ export async function createProject(payload) {
 
 export async function updateProject(id, payload) {
   const current = await getProjectById(id);
-  validateProjectInput({
+  const data = validateProjectInput({
     symbol: current.symbol,
     period: current.period,
     ...payload
   }, true);
 
+  const symbol = data.symbol ?? current.symbol;
+  const period = data.period ?? current.period;
   const buyAmount = Number(payload.buyAmountPerOrder ?? current.buy_amount_per_order ?? 0);
   const multiple = Number(payload.takeProfitMultiple ?? current.take_profit_multiple ?? 0);
   const sellDivisor = Number(payload.sellDivisor ?? current.sell_divisor ?? 1);
@@ -146,7 +148,9 @@ export async function updateProject(id, payload) {
 
   await query(
     `UPDATE projects
-     SET buy_amount_per_order = :buyAmount,
+     SET symbol = :symbol,
+         period = :period,
+         buy_amount_per_order = :buyAmount,
          take_profit_multiple = :multiple,
          take_profit_amount = :takeProfitAmount,
          sell_divisor = :sellDivisor,
@@ -154,6 +158,8 @@ export async function updateProject(id, payload) {
      WHERE id = :id`,
     {
       id,
+      symbol,
+      period,
       buyAmount,
       multiple,
       takeProfitAmount,
