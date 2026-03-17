@@ -9,20 +9,20 @@ export default function MetricGrid({ metrics }) {
 
   return (
     <Row gutter={[16, 16]}>
-      <Col xs={24} sm={12} xl={6}>
-        <Card><Statistic title="项目总数" value={metrics.total} /></Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card"><Statistic title="项目总数" value={metrics.total} /></Card>
       </Col>
-      <Col xs={24} sm={12} xl={6}>
-        <Card><Statistic title="启用项目" value={metrics.enabled} /></Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card"><Statistic title="启用项目" value={metrics.enabled} /></Card>
       </Col>
-      <Col xs={24} sm={12} xl={6}>
-        <Card><Statistic title="累计投入" value={Number(money(metrics.invested))} precision={2} /></Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card"><Statistic title="累计投入" value={Number(money(metrics.invested))} precision={2} /></Card>
       </Col>
-      <Col xs={24} sm={12} xl={6}>
-        <Card><Statistic title="当前持仓市值" value={Number(money(metrics.value))} precision={2} /></Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card"><Statistic title="当前持仓市值" value={Number(money(metrics.value))} precision={2} /></Card>
       </Col>
-      <Col xs={24} sm={12} xl={6}>
-        <Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card">
           <Statistic
             title="实际盈亏"
             value={profit}
@@ -32,8 +32,8 @@ export default function MetricGrid({ metrics }) {
           />
         </Card>
       </Col>
-      <Col xs={24} sm={12} xl={6}>
-        <Card>
+      <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card">
           <Statistic
             title="盈亏率"
             value={profitRate}

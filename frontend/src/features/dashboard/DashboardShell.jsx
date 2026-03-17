@@ -24,7 +24,7 @@ import {
 import MetricGrid from './MetricGrid';
 import ProjectCards from '../projects/ProjectCards';
 import { IndicatorList, SignalList } from '../projects/ProjectDataLists';
-import { formatTime, money, signalTag, statusTag } from '../../lib/formatters';
+import { formatTime, money, signalTag, signalTradeMetrics, statusTag } from '../../lib/formatters';
 import { calcProjectProfit, calcProjectProfitRate } from '../../hooks/useProjectMetrics';
 
 const { Header, Content } = Layout;
@@ -107,8 +107,15 @@ export default function DashboardShell(props) {
   const signalColumns = [
     { title: '时间', dataIndex: 'signal_time', render: (_, row) => formatTime(row.signal_time), width: 180 },
     { title: '动作', dataIndex: 'action', render: (_, row) => signalTag(row.action), width: 90 },
-    { title: '金额/数量', dataIndex: 'amount', width: 120 },
-    { title: '价格', dataIndex: 'price', width: 120 }
+    {
+      title: '金额', dataIndex: 'amount', width: 120,
+      render: (_, row) => row.action === 'HOLD' ? '-' : money(signalTradeMetrics(row).amount)
+    },
+    {
+      title: '数量', dataIndex: 'quantity', width: 140,
+      render: (_, row) => row.action === 'HOLD' ? '-' : money(signalTradeMetrics(row).quantity, 8)
+    },
+    { title: '价格', dataIndex: 'price', width: 120, render: (_, row) => money(row.price, 4) }
   ];
 
   const indicatorColumns = [
@@ -152,8 +159,8 @@ export default function DashboardShell(props) {
           <MetricGrid metrics={metrics} />
 
           <Row gutter={[16, 16]} style={{ marginTop: 4 }}>
-            <Col xs={24} xl={14}>
-              <Card title="项目列表" loading={projectLoading} className="panel-card">
+            <Col xs={24}>
+              <Card title="项目列表" loading={projectLoading} className="panel-card panel-card-table">
                 {projectError ? (
                   <Alert
                     type="error"
@@ -179,8 +186,8 @@ export default function DashboardShell(props) {
                     columns={projectColumns}
                     dataSource={projects}
                     locale={{ emptyText: <Empty description="暂无项目，可先创建一个" /> }}
-                    pagination={{ pageSize: 8 }}
-                    scroll={{ x: 980 }}
+                    pagination={{ pageSize: 8, showSizeChanger: false }}
+                    scroll={{ x: 1280 }}
                     rowClassName={(record) => (record.id === selectedProjectId ? 'selected-row' : '')}
                     onRow={(record) => ({ onClick: () => onLoadProjectDetail(record.id) })}
                   />
@@ -188,8 +195,8 @@ export default function DashboardShell(props) {
               </Card>
             </Col>
 
-            <Col xs={24} xl={10}>
-              <Card title="项目详情" loading={detailLoading} className="panel-card">
+            <Col xs={24}>
+              <Card title="项目详情" loading={detailLoading} className="panel-card panel-card-detail">
                 {detailError ? (
                   <Alert
                     type="warning"
@@ -213,7 +220,7 @@ export default function DashboardShell(props) {
                       <Button size="small" onClick={() => onEdit(projectDetail)}>编辑参数</Button>
                     </Space>
 
-                    <Descriptions column={1} size={mobile ? 'small' : 'default'}>
+                    <Descriptions column={mobile ? 1 : 2} size={mobile ? 'small' : 'default'}>
                       <Descriptions.Item label="项目编码">{projectDetail.project_code}</Descriptions.Item>
                       <Descriptions.Item label="交易对">{projectDetail.symbol}</Descriptions.Item>
                       <Descriptions.Item label="周期">{projectDetail.period}</Descriptions.Item>

@@ -83,6 +83,32 @@ body {
 
 .panel-card {
   border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.panel-card-table .ant-card-head,
+.panel-card-detail .ant-card-head {
+  min-height: 56px;
+}
+
+.metric-card {
+  border-radius: 16px;
+  min-height: 132px;
+}
+
+.metric-card .ant-statistic {
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.panel-card-table .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+.panel-card-table .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .selected-row td {

@@ -28,3 +28,28 @@ export function signalTag(action) {
 export function statusTag(value) {
   return Number(value) === 1 ? <Tag color="success">启用</Tag> : <Tag>停用</Tag>;
 }
+
+export function signalTradeMetrics(signal) {
+  const price = Number(signal?.price || 0);
+  const amount = Number(signal?.amount || 0);
+  const action = signal?.action;
+
+  if (action === 'BUY') {
+    return {
+      amount,
+      quantity: price > 0 ? amount / price : 0
+    };
+  }
+
+  if (action === 'SELL') {
+    return {
+      amount: amount * price,
+      quantity: amount
+    };
+  }
+
+  return {
+    amount: 0,
+    quantity: 0
+  };
+}

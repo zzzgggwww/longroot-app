@@ -1,6 +1,6 @@
 import React from 'react';
 import { List, Space, Typography } from 'antd';
-import { formatTime, money, signalTag } from '../../lib/formatters';
+import { formatTime, money, signalTag, signalTradeMetrics } from '../../lib/formatters';
 
 const { Text } = Typography;
 
@@ -9,21 +9,25 @@ export function SignalList({ data }) {
     <List
       dataSource={data}
       locale={{ emptyText: '暂无信号' }}
-      renderItem={(item) => (
-        <List.Item>
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
-            <div className="row-split">
-              {signalTag(item.action)}
-              <Text type="secondary">{formatTime(item.signal_time)}</Text>
-            </div>
-            <Text>{item.reason || '-'}</Text>
-            <div className="row-split wrap-on-mobile">
-              <Text>金额/数量：{item.amount}</Text>
-              <Text>价格：{money(item.price, 4)}</Text>
-            </div>
-          </Space>
-        </List.Item>
-      )}
+      renderItem={(item) => {
+        const trade = signalTradeMetrics(item);
+        return (
+          <List.Item>
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <div className="row-split">
+                {signalTag(item.action)}
+                <Text type="secondary">{formatTime(item.signal_time)}</Text>
+              </div>
+              <Text>{item.reason || '-'}</Text>
+              <div className="row-split wrap-on-mobile">
+                <Text>金额：{item.action === 'HOLD' ? '-' : money(trade.amount)}</Text>
+                <Text>数量：{item.action === 'HOLD' ? '-' : money(trade.quantity, 8)}</Text>
+                <Text>价格：{money(item.price, 4)}</Text>
+              </div>
+            </Space>
+          </List.Item>
+        );
+      }}
     />
   );
 }
