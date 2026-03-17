@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3000/api';
+const defaultApiBase = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+const API_BASE = import.meta.env.VITE_API_BASE || defaultApiBase;
 const token = ref(localStorage.getItem('longroot_token') || '');
 const currentUser = ref(safeParse(localStorage.getItem('longroot_user')));
 const loginLoading = ref(false);
