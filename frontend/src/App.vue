@@ -37,6 +37,16 @@ const metrics = computed(() => {
   };
 });
 
+const selectedSignal = computed(() => {
+  if (!projectSignals.value.length) return null;
+  return projectSignals.value[0];
+});
+
+const selectedIndicator = computed(() => {
+  if (!projectIndicators.value.length) return null;
+  return projectIndicators.value[0];
+});
+
 const canOperate = computed(() => Boolean(token.value));
 
 function defaultProjectForm() {
@@ -75,6 +85,16 @@ function signalType(action) {
   if (action === 'BUY') return 'success';
   if (action === 'SELL') return 'danger';
   return 'info';
+}
+
+function signalClass(action) {
+  if (action === 'BUY') return 'signal-buy';
+  if (action === 'SELL') return 'signal-sell';
+  return 'signal-hold';
+}
+
+function statusText(value) {
+  return Number(value) === 1 ? '启用' : '停用';
 }
 
 function applyProjectForm(target, source) {
@@ -288,78 +308,124 @@ onMounted(async () => {
 
 <template>
   <div v-if="!token" class="auth-wrap">
-    <el-card class="auth-card">
-      <h1 class="brand-title">LongRoot 控制台</h1>
-      <p class="brand-subtitle">先登录，再管理项目、查看信号、手动触发市场同步。</p>
+    <div class="auth-grid">
+      <div class="auth-hero">
+        <div class="hero-badge">LONGROOT TERMINAL</div>
+        <h1 class="brand-title">LongRoot 金融控制台</h1>
+        <p class="brand-subtitle">暗色交易终端风格，适配桌面与移动端，聚合查看项目、持仓、信号与指标。</p>
+        <div class="hero-metrics">
+          <div class="hero-metric">
+            <span>市场同步</span>
+            <strong>Binance</strong>
+          </div>
+          <div class="hero-metric">
+            <span>策略核心</span>
+            <strong>MACD + 限红</strong>
+          </div>
+          <div class="hero-metric">
+            <span>默认接口</span>
+            <strong>{{ API_BASE }}</strong>
+          </div>
+        </div>
+      </div>
 
-      <el-alert title="默认会连到 http://127.0.0.1:3000/api，也可以用 VITE_API_BASE 覆盖。" type="info" :closable="false" style="margin-bottom: 16px" />
+      <el-card class="auth-card panel-card">
+        <div class="panel-title-row">
+          <div>
+            <div class="eyebrow">SECURE LOGIN</div>
+            <h2 class="panel-title">进入交易面板</h2>
+          </div>
+          <div class="status-dot"></div>
+        </div>
 
-      <el-form label-position="top" @submit.prevent="handleLogin">
-        <el-form-item label="用户名">
-          <el-input v-model="loginForm.username" placeholder="admin" />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="loginForm.password" show-password placeholder="请输入密码" @keyup.enter="handleLogin" />
-        </el-form-item>
-        <el-button type="primary" :loading="loginLoading" style="width: 100%" @click="handleLogin">
-          登录
-        </el-button>
-      </el-form>
-    </el-card>
+        <el-form label-position="top" @submit.prevent="handleLogin">
+          <el-form-item label="用户名">
+            <el-input v-model="loginForm.username" placeholder="admin" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="loginForm.password" show-password placeholder="请输入密码" @keyup.enter="handleLogin" />
+          </el-form-item>
+          <el-button type="primary" :loading="loginLoading" class="full-width" @click="handleLogin">
+            登录控制台
+          </el-button>
+        </el-form>
+      </el-card>
+    </div>
   </div>
 
-  <div v-else class="page-shell">
-    <div class="page-header">
+  <div v-else class="page-shell terminal-shell">
+    <section class="hero-banner">
       <div>
-        <h1>LongRoot 管理后台</h1>
-        <p>已登录用户：{{ currentUser?.username }} · 聚合查看项目、仓位和最近信号。</p>
+        <div class="eyebrow">LIVE PORTFOLIO CONTROL</div>
+        <h1>LongRoot 金融终端</h1>
+        <p>已登录用户：{{ currentUser?.username }} · 管理策略项目、查看仓位变化、跟踪最近信号。</p>
       </div>
       <div class="top-actions">
-        <el-button @click="loadProjects">刷新</el-button>
+        <el-button @click="loadProjects">刷新数据</el-button>
         <el-button type="primary" :loading="syncLoading" @click="syncAll">同步全部项目</el-button>
         <el-button type="danger" plain @click="logout">退出</el-button>
       </div>
-    </div>
+    </section>
 
-    <div class="metric-grid">
-      <div class="metric-card"><div class="metric-label">项目总数</div><div class="metric-value">{{ metrics.total }}</div></div>
-      <div class="metric-card"><div class="metric-label">启用项目</div><div class="metric-value">{{ metrics.enabled }}</div></div>
-      <div class="metric-card"><div class="metric-label">累计投入</div><div class="metric-value">{{ money(metrics.invested) }}</div></div>
-      <div class="metric-card"><div class="metric-label">当前持仓市值</div><div class="metric-value">{{ money(metrics.value) }}</div></div>
-    </div>
+    <section class="metric-grid finance-metrics">
+      <div class="metric-card accent-blue">
+        <div class="metric-label">项目总数</div>
+        <div class="metric-value">{{ metrics.total }}</div>
+        <div class="metric-foot">当前纳入监控的策略数量</div>
+      </div>
+      <div class="metric-card accent-green">
+        <div class="metric-label">启用项目</div>
+        <div class="metric-value">{{ metrics.enabled }}</div>
+        <div class="metric-foot">正在参与市场同步</div>
+      </div>
+      <div class="metric-card accent-gold">
+        <div class="metric-label">累计投入</div>
+        <div class="metric-value">{{ money(metrics.invested) }}</div>
+        <div class="metric-foot">所有项目累计投入金额</div>
+      </div>
+      <div class="metric-card accent-purple">
+        <div class="metric-label">当前持仓市值</div>
+        <div class="metric-value">{{ money(metrics.value) }}</div>
+        <div class="metric-foot">按最近价格估算的持仓价值</div>
+      </div>
+    </section>
 
-    <div class="grid">
-      <div class="side-stack">
-        <el-card class="panel-card">
+    <section class="terminal-grid">
+      <div class="main-column">
+        <el-card class="panel-card glass-card">
           <template #header>
-            <div class="top-actions" style="justify-content: space-between; width: 100%">
-              <span class="block-title">项目列表</span>
+            <div class="panel-title-row">
+              <div>
+                <div class="eyebrow">PROJECT WATCHLIST</div>
+                <div class="panel-title">项目列表</div>
+              </div>
               <el-tag type="info">{{ projects.length }} 个</el-tag>
             </div>
           </template>
 
-          <el-table v-loading="projectLoading" :data="projects" height="440" @row-click="(row) => selectProject(row.id)">
+          <el-table v-loading="projectLoading" :data="projects" class="finance-table" @row-click="(row) => selectProject(row.id)">
             <el-table-column prop="project_code" label="项目编码" min-width="150" />
             <el-table-column prop="symbol" label="交易对" min-width="110" />
             <el-table-column prop="period" label="周期" width="80" />
-            <el-table-column label="状态" width="90">
+            <el-table-column label="状态" width="96">
               <template #default="scope">
-                <el-tag :type="Number(scope.row.status) === 1 ? 'success' : 'info'">
-                  {{ Number(scope.row.status) === 1 ? '启用' : '停用' }}
-                </el-tag>
+                <span class="status-pill" :class="Number(scope.row.status) === 1 ? 'status-on' : 'status-off'">{{ statusText(scope.row.status) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="最新信号" min-width="120">
               <template #default="scope">
-                <el-tag v-if="scope.row.latest_signal_action" :type="signalType(scope.row.latest_signal_action)">
+                <span v-if="scope.row.latest_signal_action" class="signal-pill" :class="signalClass(scope.row.latest_signal_action)">
                   {{ scope.row.latest_signal_action }}
-                </el-tag>
-                <span v-else>-</span>
+                </span>
+                <span v-else class="muted">-</span>
               </template>
+            </el-table-column>
+            <el-table-column label="当前市值" min-width="120">
+              <template #default="scope">{{ money(scope.row.position_value) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
               <template #default="scope">
-                <div class="top-actions">
+                <div class="top-actions compact-actions">
                   <el-button link type="primary" @click.stop="openEditDialog(scope.row)">编辑</el-button>
                   <el-button link type="primary" @click.stop="syncOne(scope.row.id)">同步</el-button>
                   <el-button link type="danger" @click.stop="removeProject(scope.row.id)">删除</el-button>
@@ -369,32 +435,33 @@ onMounted(async () => {
           </el-table>
         </el-card>
 
-        <el-card class="panel-card">
+        <el-card class="panel-card glass-card">
           <template #header>
-            <span class="block-title">创建项目</span>
+            <div class="panel-title-row">
+              <div>
+                <div class="eyebrow">STRATEGY INPUT</div>
+                <div class="panel-title">创建项目</div>
+              </div>
+            </div>
           </template>
 
           <el-form label-position="top">
-            <el-row :gutter="12">
-              <el-col :span="12">
-                <el-form-item label="交易对"><el-input v-model="projectForm.symbol" placeholder="BTCUSDT" /></el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="周期">
-                  <el-select v-model="projectForm.period" style="width: 100%">
-                    <el-option label="H" value="H" />
-                    <el-option label="D" value="D" />
-                    <el-option label="W" value="W" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-            </el-row>
+            <div class="responsive-form-grid two-col">
+              <el-form-item label="交易对"><el-input v-model="projectForm.symbol" placeholder="BTCUSDT" /></el-form-item>
+              <el-form-item label="周期">
+                <el-select v-model="projectForm.period" class="full-width">
+                  <el-option label="H" value="H" />
+                  <el-option label="D" value="D" />
+                  <el-option label="W" value="W" />
+                </el-select>
+              </el-form-item>
+            </div>
 
-            <el-row :gutter="12">
-              <el-col :span="8"><el-form-item label="每次买入金额"><el-input-number v-model="projectForm.buyAmountPerOrder" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-              <el-col :span="8"><el-form-item label="限红倍数"><el-input-number v-model="projectForm.takeProfitMultiple" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-              <el-col :span="8"><el-form-item label="卖出除数"><el-input-number v-model="projectForm.sellDivisor" :min="1" :precision="2" style="width: 100%" /></el-form-item></el-col>
-            </el-row>
+            <div class="responsive-form-grid three-col">
+              <el-form-item label="每次买入金额"><el-input-number v-model="projectForm.buyAmountPerOrder" :min="0" :precision="2" class="full-width" /></el-form-item>
+              <el-form-item label="限红倍数"><el-input-number v-model="projectForm.takeProfitMultiple" :min="0" :precision="2" class="full-width" /></el-form-item>
+              <el-form-item label="卖出除数"><el-input-number v-model="projectForm.sellDivisor" :min="1" :precision="2" class="full-width" /></el-form-item>
+            </div>
 
             <el-form-item label="状态">
               <el-radio-group v-model="projectForm.status">
@@ -410,70 +477,115 @@ onMounted(async () => {
         </el-card>
       </div>
 
-      <div class="side-stack">
-        <el-card class="panel-card" v-loading="detailLoading">
+      <div class="side-column">
+        <el-card class="panel-card glass-card" v-loading="detailLoading">
           <template #header>
-            <div class="top-actions" style="justify-content: space-between; width: 100%">
-              <span class="block-title">项目详情</span>
-              <el-tag v-if="projectDetail" :type="Number(projectDetail.status) === 1 ? 'success' : 'info'">
-                {{ Number(projectDetail.status) === 1 ? '启用' : '停用' }}
-              </el-tag>
+            <div class="panel-title-row">
+              <div>
+                <div class="eyebrow">POSITION SNAPSHOT</div>
+                <div class="panel-title">项目详情</div>
+              </div>
+              <span v-if="projectDetail" class="status-pill" :class="Number(projectDetail.status) === 1 ? 'status-on' : 'status-off'">
+                {{ statusText(projectDetail.status) }}
+              </span>
             </div>
           </template>
 
-          <div v-if="projectDetail" class="project-meta">
-            <div class="meta-item"><div class="label">项目编码</div><div class="value">{{ projectDetail.project_code }}</div></div>
-            <div class="meta-item"><div class="label">交易对</div><div class="value">{{ projectDetail.symbol }}</div></div>
-            <div class="meta-item"><div class="label">周期</div><div class="value">{{ projectDetail.period }}</div></div>
-            <div class="meta-item"><div class="label">每次买入金额</div><div class="value">{{ money(projectDetail.buy_amount_per_order) }}</div></div>
-            <div class="meta-item"><div class="label">限红倍数</div><div class="value">{{ money(projectDetail.take_profit_multiple) }}</div></div>
-            <div class="meta-item"><div class="label">限红金额</div><div class="value">{{ money(projectDetail.take_profit_amount) }}</div></div>
-            <div class="meta-item"><div class="label">卖出除数</div><div class="value">{{ money(projectDetail.sell_divisor) }}</div></div>
-            <div class="meta-item"><div class="label">持仓数量</div><div class="value">{{ money(projectDetail.position_qty, 8) }}</div></div>
-            <div class="meta-item"><div class="label">累计投入</div><div class="value">{{ money(projectDetail.total_invested) }}</div></div>
-            <div class="meta-item"><div class="label">累计变现</div><div class="value">{{ money(projectDetail.total_realized) }}</div></div>
-            <div class="meta-item"><div class="label">当前持仓市值</div><div class="value">{{ money(projectDetail.position_value) }}</div></div>
-            <div class="meta-item"><div class="label">最大敞口</div><div class="value">{{ money(projectDetail.max_exposure) }}</div></div>
-            <div class="meta-item"><div class="label">最大损失</div><div class="value">{{ money(projectDetail.max_loss) }}</div></div>
-            <div class="meta-item"><div class="label">更新时间</div><div class="value">{{ formatTime(projectDetail.updated_at) }}</div></div>
-          </div>
+          <template v-if="projectDetail">
+            <div class="summary-head">
+              <div>
+                <div class="summary-symbol">{{ projectDetail.symbol }}</div>
+                <div class="muted">{{ projectDetail.project_code }} · 周期 {{ projectDetail.period }}</div>
+              </div>
+              <div v-if="selectedSignal" class="signal-pill large" :class="signalClass(selectedSignal.action)">
+                {{ selectedSignal.action }}
+              </div>
+            </div>
+
+            <div class="project-meta">
+              <div class="meta-item"><div class="label">每次买入金额</div><div class="value">{{ money(projectDetail.buy_amount_per_order) }}</div></div>
+              <div class="meta-item"><div class="label">限红倍数</div><div class="value">{{ money(projectDetail.take_profit_multiple) }}</div></div>
+              <div class="meta-item"><div class="label">限红金额</div><div class="value">{{ money(projectDetail.take_profit_amount) }}</div></div>
+              <div class="meta-item"><div class="label">卖出除数</div><div class="value">{{ money(projectDetail.sell_divisor) }}</div></div>
+              <div class="meta-item"><div class="label">持仓数量</div><div class="value">{{ money(projectDetail.position_qty, 8) }}</div></div>
+              <div class="meta-item"><div class="label">累计投入</div><div class="value">{{ money(projectDetail.total_invested) }}</div></div>
+              <div class="meta-item"><div class="label">累计变现</div><div class="value">{{ money(projectDetail.total_realized) }}</div></div>
+              <div class="meta-item"><div class="label">当前持仓市值</div><div class="value">{{ money(projectDetail.position_value) }}</div></div>
+              <div class="meta-item"><div class="label">最大敞口</div><div class="value">{{ money(projectDetail.max_exposure) }}</div></div>
+              <div class="meta-item"><div class="label">最大损失</div><div class="value">{{ money(projectDetail.max_loss) }}</div></div>
+            </div>
+
+            <div v-if="selectedSignal" class="reason-card">
+              <div class="eyebrow">LATEST STRATEGY REASON</div>
+              <div class="reason-main">{{ selectedSignal.reason }}</div>
+              <div class="reason-sub">{{ formatTime(selectedSignal.signal_time) }} · 价格 {{ money(selectedSignal.price, 4) }}</div>
+            </div>
+
+            <div v-if="selectedIndicator" class="indicator-strip">
+              <div class="indicator-chip">
+                <span>DIF</span>
+                <strong>{{ selectedIndicator.dif }}</strong>
+              </div>
+              <div class="indicator-chip">
+                <span>DEA</span>
+                <strong>{{ selectedIndicator.dea }}</strong>
+              </div>
+              <div class="indicator-chip">
+                <span>价格</span>
+                <strong>{{ selectedIndicator.price }}</strong>
+              </div>
+            </div>
+          </template>
           <el-empty v-else description="先从左侧选择一个项目" />
         </el-card>
 
-        <el-card class="panel-card">
-          <template #header><span class="block-title">最近交易信号</span></template>
-          <el-table :data="projectSignals" height="240" empty-text="暂无信号">
-            <el-table-column prop="signal_time" label="时间" min-width="160"><template #default="scope">{{ formatTime(scope.row.signal_time) }}</template></el-table-column>
-            <el-table-column label="动作" width="100"><template #default="scope"><el-tag :type="signalType(scope.row.action)">{{ scope.row.action }}</el-tag></template></el-table-column>
-            <el-table-column prop="amount" label="金额/数量" min-width="100" />
+        <el-card class="panel-card glass-card">
+          <template #header>
+            <div class="panel-title-row">
+              <div>
+                <div class="eyebrow">SIGNAL TAPE</div>
+                <div class="panel-title">最近交易信号</div>
+              </div>
+            </div>
+          </template>
+          <el-table :data="projectSignals" class="finance-table compact-table" empty-text="暂无信号">
+            <el-table-column prop="signal_time" label="时间" min-width="150"><template #default="scope">{{ formatTime(scope.row.signal_time) }}</template></el-table-column>
+            <el-table-column label="动作" width="90"><template #default="scope"><span class="signal-pill" :class="signalClass(scope.row.action)">{{ scope.row.action }}</span></template></el-table-column>
+            <el-table-column prop="amount" label="金额/数量" min-width="110" />
             <el-table-column prop="price" label="价格" min-width="100" />
-            <el-table-column prop="reason" label="原因" min-width="240" show-overflow-tooltip />
           </el-table>
         </el-card>
 
-        <el-card class="panel-card">
-          <template #header><span class="block-title">最近指标</span></template>
-          <el-table :data="projectIndicators" height="240" empty-text="暂无指标">
-            <el-table-column prop="candle_time" label="K线时间" min-width="160"><template #default="scope">{{ formatTime(scope.row.candle_time) }}</template></el-table-column>
+        <el-card class="panel-card glass-card">
+          <template #header>
+            <div class="panel-title-row">
+              <div>
+                <div class="eyebrow">INDICATOR FEED</div>
+                <div class="panel-title">最近指标</div>
+              </div>
+            </div>
+          </template>
+          <el-table :data="projectIndicators" class="finance-table compact-table" empty-text="暂无指标">
+            <el-table-column prop="candle_time" label="K线时间" min-width="150"><template #default="scope">{{ formatTime(scope.row.candle_time) }}</template></el-table-column>
             <el-table-column prop="price" label="价格" min-width="100" />
             <el-table-column prop="dif" label="DIF" min-width="100" />
             <el-table-column prop="dea" label="DEA" min-width="100" />
           </el-table>
         </el-card>
       </div>
-    </div>
+    </section>
 
     <el-dialog v-model="editDialogVisible" title="编辑项目" width="560px">
       <el-form label-position="top">
-        <el-row :gutter="12">
-          <el-col :span="12"><el-form-item label="交易对"><el-input v-model="editForm.symbol" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="周期"><el-select v-model="editForm.period" style="width: 100%"><el-option label="H" value="H" /><el-option label="D" value="D" /><el-option label="W" value="W" /></el-select></el-form-item></el-col>
-        </el-row>
-        <el-row :gutter="12">
-          <el-col :span="8"><el-form-item label="每次买入金额"><el-input-number v-model="editForm.buyAmountPerOrder" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="限红倍数"><el-input-number v-model="editForm.takeProfitMultiple" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="卖出除数"><el-input-number v-model="editForm.sellDivisor" :min="1" :precision="2" style="width: 100%" /></el-form-item></el-col>
-        </el-row>
+        <div class="responsive-form-grid two-col">
+          <el-form-item label="交易对"><el-input v-model="editForm.symbol" /></el-form-item>
+          <el-form-item label="周期"><el-select v-model="editForm.period" class="full-width"><el-option label="H" value="H" /><el-option label="D" value="D" /><el-option label="W" value="W" /></el-select></el-form-item>
+        </div>
+        <div class="responsive-form-grid three-col">
+          <el-form-item label="每次买入金额"><el-input-number v-model="editForm.buyAmountPerOrder" :min="0" :precision="2" class="full-width" /></el-form-item>
+          <el-form-item label="限红倍数"><el-input-number v-model="editForm.takeProfitMultiple" :min="0" :precision="2" class="full-width" /></el-form-item>
+          <el-form-item label="卖出除数"><el-input-number v-model="editForm.sellDivisor" :min="1" :precision="2" class="full-width" /></el-form-item>
+        </div>
         <el-form-item label="状态">
           <el-radio-group v-model="editForm.status">
             <el-radio :value="1">启用</el-radio>
