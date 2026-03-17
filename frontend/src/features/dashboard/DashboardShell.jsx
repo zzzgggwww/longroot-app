@@ -67,6 +67,7 @@ export default function DashboardShell(props) {
     { title: '状态', dataIndex: 'status', width: 90, render: (_, row) => statusTag(row.status) },
     { title: '最新信号', dataIndex: 'latest_signal_action', width: 110, render: (_, row) => signalTag(row.latest_signal_action) },
     { title: '当前市值', dataIndex: 'position_value', width: 120, render: (_, row) => money(row.position_value) },
+    { title: '累计手续费', dataIndex: 'total_fees', width: 120, render: (_, row) => money(row.total_fees, 4) },
     {
       title: '实际盈亏', dataIndex: 'profit', width: 120,
       render: (_, row) => {
@@ -114,6 +115,14 @@ export default function DashboardShell(props) {
     {
       title: '数量', dataIndex: 'quantity', width: 140,
       render: (_, row) => row.action === 'HOLD' ? '-' : money(signalTradeMetrics(row).quantity, 8)
+    },
+    {
+      title: '手续费', dataIndex: 'fee', width: 120,
+      render: (_, row) => row.action === 'HOLD' ? '-' : money(signalTradeMetrics(row).fee, 6)
+    },
+    {
+      title: '净额', dataIndex: 'net_amount', width: 120,
+      render: (_, row) => row.action === 'HOLD' ? '-' : money(signalTradeMetrics(row).netAmount, 4)
     },
     { title: '价格', dataIndex: 'price', width: 120, render: (_, row) => money(row.price, 4) }
   ];
@@ -231,6 +240,7 @@ export default function DashboardShell(props) {
                       <Descriptions.Item label="持仓数量">{money(projectDetail.position_qty, 8)}</Descriptions.Item>
                       <Descriptions.Item label="累计投入">{money(projectDetail.total_invested)}</Descriptions.Item>
                       <Descriptions.Item label="累计变现">{money(projectDetail.total_realized)}</Descriptions.Item>
+                      <Descriptions.Item label="累计手续费">{money(projectDetail.total_fees)}</Descriptions.Item>
                       <Descriptions.Item label="当前市值">{money(projectDetail.position_value)}</Descriptions.Item>
                       <Descriptions.Item label="实际盈亏">
                         <Text style={{ color: calcProjectProfit(projectDetail) > 0 ? '#16a34a' : calcProjectProfit(projectDetail) < 0 ? '#dc2626' : undefined }}>

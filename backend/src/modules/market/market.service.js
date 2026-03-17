@@ -1,6 +1,11 @@
 import { query } from '../../db/pool.js';
+import { env } from '../../config/env.js';
 import { fetchKlines, fetchTickerPrice } from './binance.service.js';
 import { calculateMacdSeries, evaluateSignal } from './macd.service.js';
+
+function roundAmount(value, digits = 8) {
+  return Number(Number(value || 0).toFixed(digits));
+}
 
 export async function syncProjectMarket(project) {
   const klines = await fetchKlines(project.symbol, project.period);
@@ -33,6 +38,7 @@ export async function syncProjectMarket(project) {
   const position = positionRows[0] || {
     total_invested: 0,
     total_realized: 0,
+    total_fees: 0,
     position_qty: 0,
     position_value: 0,
     max_exposure: 0,
@@ -49,27 +55,42 @@ export async function syncProjectMarket(project) {
     currentPrice
   });
 
+  const feeRate = Number(env.binanceSpotTradingFeeRate || 0.001);
+  let tradeQty = 0;
+  let tradeFee = 0;
+  let netAmount = 0;
+
   if (signal.action === 'BUY' && currentPrice > 0) {
-    const qty = Number((signal.amount / currentPrice).toFixed(12));
-    position.total_invested = Number(position.total_invested || 0) + signal.amount;
-    position.position_qty = Number(position.position_qty || 0) + qty;
+    const grossAmount = Number(signal.amount || 0);
+    tradeFee = roundAmount(grossAmount * feeRate);
+    netAmount = roundAmount(grossAmount + tradeFee);
+    tradeQty = roundAmount((grossAmount - tradeFee) / currentPrice, 12);
+
+    position.total_invested = roundAmount(Number(position.total_invested || 0) + netAmount);
+    position.total_fees = roundAmount(Number(position.total_fees || 0) + tradeFee);
+    position.position_qty = roundAmount(Number(position.position_qty || 0) + tradeQty, 12);
   }
 
   if (signal.action === 'SELL' && signal.amount > 0 && currentPrice > 0) {
-    const sellQty = Math.min(Number(position.position_qty || 0), Number(signal.amount || 0));
-    const realized = Number((sellQty * currentPrice).toFixed(8));
-    position.total_realized = Number(position.total_realized || 0) + realized;
-    position.position_qty = Number(position.position_qty || 0) - sellQty;
+    tradeQty = roundAmount(Math.min(Number(position.position_qty || 0), Number(signal.amount || 0)), 12);
+    const grossAmount = roundAmount(tradeQty * currentPrice);
+    tradeFee = roundAmount(grossAmount * feeRate);
+    netAmount = roundAmount(grossAmount - tradeFee);
+
+    position.total_realized = roundAmount(Number(position.total_realized || 0) + netAmount);
+    position.total_fees = roundAmount(Number(position.total_fees || 0) + tradeFee);
+    position.position_qty = roundAmount(Number(position.position_qty || 0) - tradeQty, 12);
   }
 
-  position.position_value = Number((Number(position.position_qty || 0) * currentPrice).toFixed(8));
-  position.max_exposure = Math.max(Number(position.max_exposure || 0), Number(position.total_invested || 0) - Number(position.total_realized || 0));
-  position.max_loss = Math.max(Number(position.max_loss || 0), Number(position.total_invested || 0) - Number(position.total_realized || 0) - position.position_value);
+  position.position_value = roundAmount(Number(position.position_qty || 0) * currentPrice);
+  position.max_exposure = Math.max(Number(position.max_exposure || 0), roundAmount(Number(position.total_invested || 0) - Number(position.total_realized || 0)));
+  position.max_loss = Math.max(Number(position.max_loss || 0), roundAmount(Number(position.total_invested || 0) - Number(position.total_realized || 0) - position.position_value));
 
   await query(
     `UPDATE positions
      SET total_invested = :totalInvested,
          total_realized = :totalRealized,
+         total_fees = :totalFees,
          position_qty = :positionQty,
          position_value = :positionValue,
          max_exposure = :maxExposure,
@@ -79,6 +100,7 @@ export async function syncProjectMarket(project) {
       projectId: project.id,
       totalInvested: Number(position.total_invested || 0),
       totalRealized: Number(position.total_realized || 0),
+      totalFees: Number(position.total_fees || 0),
       positionQty: Number(position.position_qty || 0),
       positionValue: Number(position.position_value || 0),
       maxExposure: Number(position.max_exposure || 0),
@@ -87,18 +109,21 @@ export async function syncProjectMarket(project) {
   );
 
   await query(
-    `INSERT INTO trade_signals (project_id, signal_time, action, amount, price, reason)
-     VALUES (:projectId, NOW(), :action, :amount, :price, :reason)`,
+    `INSERT INTO trade_signals (project_id, signal_time, action, amount, qty, fee, net_amount, price, reason)
+     VALUES (:projectId, NOW(), :action, :amount, :qty, :fee, :netAmount, :price, :reason)`,
     {
       projectId: project.id,
       action: signal.action,
-      amount: Number(signal.amount || 0),
+      amount: roundAmount(Number(signal.amount || 0)),
+      qty: tradeQty,
+      fee: tradeFee,
+      netAmount,
       price: currentPrice,
       reason: signal.reason
     }
   );
 
-  return { ...signal, currentPrice, latestIndicator: latest || null };
+  return { ...signal, currentPrice, feeRate, fee: tradeFee, qty: tradeQty, netAmount, latestIndicator: latest || null };
 }
 
 export async function syncAllProjectsMarket() {

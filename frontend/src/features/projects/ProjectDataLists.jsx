@@ -20,8 +20,10 @@ export function SignalList({ data }) {
               </div>
               <Text>{item.reason || '-'}</Text>
               <div className="row-split wrap-on-mobile">
-                <Text>金额：{item.action === 'HOLD' ? '-' : money(trade.amount)}</Text>
+                <Text>金额：{item.action === 'HOLD' ? '-' : money(trade.amount, 4)}</Text>
                 <Text>数量：{item.action === 'HOLD' ? '-' : money(trade.quantity, 8)}</Text>
+                <Text>手续费：{item.action === 'HOLD' ? '-' : money(trade.fee, 6)}</Text>
+                <Text>{item.action === 'SELL' ? '净变现' : '总成本'}：{item.action === 'HOLD' ? '-' : money(trade.netAmount, 4)}</Text>
                 <Text>价格：{money(item.price, 4)}</Text>
               </div>
             </Space>

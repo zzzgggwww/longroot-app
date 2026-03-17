@@ -41,7 +41,7 @@ async function generateProjectCode(symbol, period) {
 
 export async function listProjects() {
   return query(
-    `SELECT p.*, pos.total_invested, pos.total_realized, pos.position_qty, pos.position_value,
+    `SELECT p.*, pos.total_invested, pos.total_realized, pos.total_fees, pos.position_qty, pos.position_value,
             pos.max_exposure, pos.max_loss,
             ts.action AS latest_signal_action, ts.reason AS latest_signal_reason, ts.signal_time AS latest_signal_time
      FROM projects p
@@ -59,7 +59,7 @@ export async function listProjects() {
 
 export async function getProjectById(id) {
   const rows = await query(
-    `SELECT p.*, pos.total_invested, pos.total_realized, pos.position_qty, pos.position_value,
+    `SELECT p.*, pos.total_invested, pos.total_realized, pos.total_fees, pos.position_qty, pos.position_value,
             pos.max_exposure, pos.max_loss
      FROM projects p
      LEFT JOIN positions pos ON pos.project_id = p.id
@@ -74,7 +74,7 @@ export async function listProjectSignals(id, limit = 20) {
   await getProjectById(id);
   const safeLimit = normalizeLimit(limit);
   return query(
-    `SELECT id, project_id, signal_time, action, amount, price, reason, created_at
+    `SELECT id, project_id, signal_time, action, amount, qty, fee, net_amount, price, reason, created_at
      FROM trade_signals
      WHERE project_id = :id
      ORDER BY signal_time DESC, id DESC

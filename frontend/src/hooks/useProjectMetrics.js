@@ -17,6 +17,7 @@ export function useProjectMetrics(projects) {
   return useMemo(() => {
     const invested = projects.reduce((sum, item) => sum + Number(item.total_invested || 0), 0);
     const value = projects.reduce((sum, item) => sum + Number(item.position_value || 0), 0);
+    const fees = projects.reduce((sum, item) => sum + Number(item.total_fees || 0), 0);
     const profit = projects.reduce((sum, item) => sum + calcProjectProfit(item), 0);
     const profitRate = invested > 0 ? profit / invested : 0;
     return {
@@ -24,6 +25,7 @@ export function useProjectMetrics(projects) {
       enabled: projects.filter((item) => Number(item.status) === 1).length,
       invested,
       value,
+      fees,
       profit,
       profitRate
     };

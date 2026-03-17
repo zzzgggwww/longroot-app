@@ -22,6 +22,9 @@ export default function MetricGrid({ metrics }) {
         <Card className="metric-card"><Statistic title="当前持仓市值" value={Number(money(metrics.value))} precision={2} /></Card>
       </Col>
       <Col xs={24} sm={12} lg={8} xl={8}>
+        <Card className="metric-card"><Statistic title="累计手续费" value={Number(money(metrics.fees))} precision={4} /></Card>
+      </Col>
+      <Col xs={24} sm={12} lg={8} xl={8}>
         <Card className="metric-card">
           <Statistic
             title="实际盈亏"

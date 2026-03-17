@@ -32,24 +32,43 @@ export function statusTag(value) {
 export function signalTradeMetrics(signal) {
   const price = Number(signal?.price || 0);
   const amount = Number(signal?.amount || 0);
+  const qty = Number(signal?.qty || 0);
+  const fee = Number(signal?.fee || 0);
+  const netAmount = Number(signal?.net_amount ?? signal?.netAmount ?? 0);
   const action = signal?.action;
+
+  if (qty > 0 || fee > 0 || netAmount > 0) {
+    const grossAmount = action === 'SELL' ? netAmount + fee : amount;
+    return {
+      amount: grossAmount,
+      quantity: qty,
+      fee,
+      netAmount: action === 'BUY' ? amount + fee : netAmount
+    };
+  }
 
   if (action === 'BUY') {
     return {
       amount,
-      quantity: price > 0 ? amount / price : 0
+      quantity: price > 0 ? amount / price : 0,
+      fee: 0,
+      netAmount: amount
     };
   }
 
   if (action === 'SELL') {
     return {
       amount: amount * price,
-      quantity: amount
+      quantity: amount,
+      fee: 0,
+      netAmount: amount * price
     };
   }
 
   return {
     amount: 0,
-    quantity: 0
+    quantity: 0,
+    fee: 0,
+    netAmount: 0
   };
 }
