@@ -7,6 +7,7 @@
 - 实现项目 CRUD 接口
 - 增加项目信号/指标明细接口：`GET /api/projects/:id/signals`、`GET /api/projects/:id/indicators`
 - 实现 Binance K 线抓取与 MACD 计算模块骨架
+- 按 Excel 规则校准信号：补入 DIF 近 3 周期峰值、DEA 回落卖出、限红拦截、涨跌价格因子
 - 实现手动同步接口与 node-cron 定时任务骨架
 - 完成 `/api/health` 健康检查
 - 初始化 Vue 3 + Element Plus 前端管理后台
@@ -17,5 +18,5 @@
 1. 前端增加编辑项目 / 停用项目 / 更细的错误态处理
 2. 用户创建/改密/权限分配
 3. 更精细的持仓与收益核算
-4. 用真实业务样本校准交易信号
+4. 用更多真实业务样本继续校准交易信号
 5. 测试、部署脚本、PM2/Docker

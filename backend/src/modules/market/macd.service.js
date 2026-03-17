@@ -27,6 +27,10 @@ export function calculateMacdSeries(closes, shortPeriod = 12, longPeriod = 26, s
   }));
 }
 
+function isPeak(value, values) {
+  return value >= Math.max(...values);
+}
+
 export function evaluateSignal({ latestIndicators, positionValue, takeProfitAmount, buyAmountPerOrder, sellDivisor, positionQty, currentPrice }) {
   if (!latestIndicators || latestIndicators.length < 3) {
     return { action: 'HOLD', amount: 0, reason: '指标不足 3 个周期，暂不触发信号' };
@@ -34,22 +38,46 @@ export function evaluateSignal({ latestIndicators, positionValue, takeProfitAmou
 
   const recent = latestIndicators.slice(-3);
   const current = recent[recent.length - 1];
-  const maxDif = Math.max(...recent.map((item) => item.dif));
-  const maxDea = Math.max(...recent.map((item) => item.dea));
+  const previous = recent[recent.length - 2];
+  const difValues = recent.map((item) => Number(item.dif || 0));
+  const deaValues = recent.map((item) => Number(item.dea || 0));
 
-  if (positionValue > takeProfitAmount && current.dif === maxDif) {
-    const amount = Number((positionQty / Math.max(sellDivisor, 1)).toFixed(8));
-    return { action: 'SELL', amount, reason: '持仓市值超过限红金额，且当前 DIF 为最近 3 个周期最大值' };
+  const difPeak = isPeak(Number(current.dif || 0), difValues);
+  const deaFalling = Number(current.dea || 0) < Math.max(...deaValues);
+  const priceUpMultiplier = current.close > Number(previous?.close || current.close) ? 1 : 2;
+  const priceDownSellMultiplier = current.close > Number(previous?.close || current.close) ? 2 : 1;
+  const underLimit = positionValue <= takeProfitAmount;
+  const sellBaseQty = Number(((positionQty || 0) / Math.max(sellDivisor || 1, 1)).toFixed(8));
+  const scaledSellQty = Number((sellBaseQty * priceDownSellMultiplier).toFixed(8));
+  const scaledBuyAmount = Number((buyAmountPerOrder * priceUpMultiplier).toFixed(8));
+
+  if (difPeak && underLimit) {
+    return {
+      action: 'BUY',
+      amount: scaledBuyAmount,
+      reason: `DIF 创近 3 周期新高，未触发限红，按价格因子 ${priceUpMultiplier} 放大买入金额`
+    };
   }
 
-  if (current.dif === maxDif && positionValue <= takeProfitAmount) {
-    return { action: 'BUY', amount: buyAmountPerOrder, reason: '当前 DIF 为最近 3 个周期最大值，且持仓市值未超过限红金额' };
+  if (difPeak && !underLimit && scaledSellQty > 0) {
+    return {
+      action: 'SELL',
+      amount: scaledSellQty,
+      reason: `DIF 创近 3 周期新高，但持仓市值已超过限红金额，按价格因子 ${priceDownSellMultiplier} 触发限红卖出`
+    };
   }
 
-  if (current.dea < maxDea) {
-    const amount = Number(((positionQty || 0) / Math.max(sellDivisor, 1)).toFixed(8));
-    return { action: 'SELL', amount, reason: '当前 DEA 小于最近 3 个周期 DEA 最大值' };
+  if (deaFalling && scaledSellQty > 0) {
+    return {
+      action: 'SELL',
+      amount: scaledSellQty,
+      reason: `DEA 低于近 3 周期最高值，按价格因子 ${priceDownSellMultiplier} 缩放卖出数量`
+    };
   }
 
-  return { action: 'HOLD', amount: 0, reason: `信号未触发，现价 ${currentPrice}` };
+  return {
+    action: 'HOLD',
+    amount: 0,
+    reason: `信号未触发：DIF峰值=${difPeak ? '是' : '否'}，限红=${underLimit ? '未触发' : '已触发'}，DEA回落=${deaFalling ? '是' : '否'}，现价 ${currentPrice}`
+  };
 }
