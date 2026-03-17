@@ -23,6 +23,12 @@ function validateProjectInput(input, partial = false) {
   return data;
 }
 
+function normalizeLimit(limit, fallback = 20, max = 200) {
+  const value = Number(limit);
+  if (!Number.isInteger(value) || value <= 0) return fallback;
+  return Math.min(value, max);
+}
+
 async function generateProjectCode(symbol, period) {
   const prefix = `${symbol}-${period}-`;
   const rows = await query(
@@ -66,25 +72,27 @@ export async function getProjectById(id) {
 
 export async function listProjectSignals(id, limit = 20) {
   await getProjectById(id);
+  const safeLimit = normalizeLimit(limit);
   return query(
     `SELECT id, project_id, signal_time, action, amount, price, reason, created_at
      FROM trade_signals
      WHERE project_id = :id
      ORDER BY signal_time DESC, id DESC
-     LIMIT :limit`,
-    { id, limit: Number(limit) }
+     LIMIT ${safeLimit}`,
+    { id }
   );
 }
 
 export async function listProjectIndicators(id, limit = 20) {
   await getProjectById(id);
+  const safeLimit = normalizeLimit(limit);
   return query(
     `SELECT id, project_id, candle_time, price, dif, dea, created_at
      FROM price_indicators
      WHERE project_id = :id
      ORDER BY candle_time DESC, id DESC
-     LIMIT :limit`,
-    { id, limit: Number(limit) }
+     LIMIT ${safeLimit}`,
+    { id }
   );
 }
 
@@ -125,7 +133,7 @@ export async function createProject(payload) {
 
 export async function updateProject(id, payload) {
   const current = await getProjectById(id);
-  const data = validateProjectInput({
+  validateProjectInput({
     symbol: current.symbol,
     period: current.period,
     ...payload
