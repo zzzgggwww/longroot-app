@@ -1,3 +1,6 @@
+/**
+ * 模块说明：格式化工具模块：统一处理金额、时间、标签和交易信号显示。
+ */
 import React from 'react';
 import { Tag } from 'antd';
 import dayjs from 'dayjs';

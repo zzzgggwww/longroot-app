@@ -1,3 +1,6 @@
+/**
+ * 模块说明：指标计算服务：负责 MACD 序列计算与买卖信号判定。
+ */
 export function calculateMacdSeries(closes, shortPeriod = 12, longPeriod = 26, signalPeriod = 9) {
   if (!Array.isArray(closes) || closes.length === 0) return [];
 

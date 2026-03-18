@@ -1,3 +1,6 @@
+/**
+ * 模块说明：环境配置模块：统一读取 .env 和默认值，给后端其它模块提供稳定配置入口。
+ */
 import dotenv from 'dotenv';
 
 dotenv.config();

@@ -1,3 +1,6 @@
+/**
+ * 模块说明：鉴权中间件：负责 JWT 解析、登录态校验以及管理员权限校验。
+ */
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 
@@ -15,4 +18,11 @@ export function authRequired(req, res, next) {
   } catch {
     return res.status(401).json({ message: 'Invalid token' });
   }
+}
+
+export function adminRequired(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ message: '仅管理员可操作' });
+  }
+  next();
 }

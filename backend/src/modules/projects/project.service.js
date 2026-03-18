@@ -1,8 +1,12 @@
+/**
+ * 模块说明：项目服务：处理项目参数校验、项目编码生成、项目及附属数据读写。
+ */
 import { query } from '../../db/pool.js';
 import { httpError } from '../../utils/http-error.js';
 
 const PERIOD_MAP = { H: 'H', D: 'D', W: 'W' };
 
+// 统一校验项目输入；partial=true 时允许只传局部字段用于更新。
 function validateProjectInput(input, partial = false) {
   const data = {
     symbol: input.symbol?.toUpperCase(),
@@ -29,6 +33,7 @@ function normalizeLimit(limit, fallback = 20, max = 200) {
   return Math.min(value, max);
 }
 
+// 根据交易对和周期生成可读性强的项目编码，例如 BTCUSDT-H-001。
 async function generateProjectCode(symbol, period) {
   const prefix = `${symbol}-${period}-`;
   const rows = await query(
@@ -42,6 +47,7 @@ async function generateProjectCode(symbol, period) {
 export async function listProjects() {
   return query(
     `SELECT p.*, pos.total_invested, pos.total_realized, pos.total_fees, pos.position_qty, pos.position_value,
+            pos.position_cost, pos.avg_cost_price, pos.realized_profit,
             pos.max_exposure, pos.max_loss,
             ts.action AS latest_signal_action, ts.reason AS latest_signal_reason, ts.signal_time AS latest_signal_time
      FROM projects p
@@ -60,6 +66,7 @@ export async function listProjects() {
 export async function getProjectById(id) {
   const rows = await query(
     `SELECT p.*, pos.total_invested, pos.total_realized, pos.total_fees, pos.position_qty, pos.position_value,
+            pos.position_cost, pos.avg_cost_price, pos.realized_profit,
             pos.max_exposure, pos.max_loss
      FROM projects p
      LEFT JOIN positions pos ON pos.project_id = p.id

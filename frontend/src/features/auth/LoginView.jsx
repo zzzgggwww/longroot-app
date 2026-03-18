@@ -1,7 +1,10 @@
+/**
+ * 模块说明：登录页面组件：提供用户名密码输入和登录提交界面。
+ */
 import React, { useState } from 'react';
-import { BarChartOutlined, UserOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space, Typography } from 'antd';
 import { API_BASE } from '../../lib/constants';
+import { BrandMark, UserGlyph } from '../../lib/icons';
 
 const { Title, Text } = Typography;
 
@@ -18,12 +21,13 @@ export default function LoginView({ onLogin, loading }) {
     <div className="login-shell simple-login-shell">
       <Card className="login-card" bordered={false}>
         <Space direction="vertical" size={20} style={{ width: '100%' }}>
-          <div>
-            <Space align="center">
-              <BarChartOutlined className="brand-icon" />
-              <Title level={3} style={{ margin: 0 }}>LongRoot Pro</Title>
-            </Space>
-            <Text type="secondary">Ant Design 响应式控制台 · API {API_BASE}</Text>
+          <div className="login-brand-block">
+            <div className="login-brand-row">
+              <BrandMark className="brand-icon" />
+              <Title level={3} className="login-title" style={{ margin: 0 }}>LongRoot Pro</Title>
+            </div>
+            <Text className="login-subtitle">Ant Design 响应式控制台</Text>
+            <Text className="login-api-text">API {API_BASE}</Text>
           </div>
 
           <form onSubmit={submit} className="login-form-plain">
@@ -31,7 +35,7 @@ export default function LoginView({ onLogin, loading }) {
             <Input
               id="login-username"
               size="large"
-              prefix={<UserOutlined />}
+              prefix={<UserGlyph />}
               placeholder="请输入用户名"
               value={username}
               onChange={(event) => setUsername(event.target.value)}

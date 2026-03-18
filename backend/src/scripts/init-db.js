@@ -1,3 +1,6 @@
+/**
+ * 模块说明：数据库初始化脚本：执行 schema 初始化，创建项目所需表结构。
+ */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +34,9 @@ try {
   await ensureColumn('trade_signals', 'fee', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER qty');
   await ensureColumn('trade_signals', 'net_amount', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER fee');
   await ensureColumn('positions', 'total_fees', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER total_realized');
+  await ensureColumn('positions', 'position_cost', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER position_value');
+  await ensureColumn('positions', 'avg_cost_price', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER position_cost');
+  await ensureColumn('positions', 'realized_profit', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER avg_cost_price');
   console.log(`Database initialized from ${sqlPath}`);
 } finally {
   connection.release();

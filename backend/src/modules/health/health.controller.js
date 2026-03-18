@@ -1,3 +1,6 @@
+/**
+ * 模块说明：健康检查控制器：提供服务存活状态和基础运行信息。
+ */
 import { asyncHandler } from '../../utils/async-handler.js';
 import { query } from '../../db/pool.js';
 

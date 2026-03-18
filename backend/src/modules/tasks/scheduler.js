@@ -1,3 +1,6 @@
+/**
+ * 模块说明：定时任务模块：按配置周期自动执行市场同步。
+ */
 import cron from 'node-cron';
 import { env } from '../../config/env.js';
 import { syncAllProjectsMarket } from '../market/market.service.js';

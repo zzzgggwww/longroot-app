@@ -1,9 +1,9 @@
+/**
+ * 模块说明：数据修复脚本：回填历史交易手续费并修正关联持仓数据。
+ */
 import { pool, query } from '../db/pool.js';
 import { env } from '../config/env.js';
-
-function round(value, digits = 8) {
-  return Number(Number(value || 0).toFixed(digits));
-}
+import { applyBuy, applySell, createEmptyPosition, finalizePositionSnapshot } from '../modules/market/pnl.service.js';
 
 async function main() {
   const feeRate = Number(env.binanceSpotTradingFeeRate || 0.001);
@@ -18,13 +18,8 @@ async function main() {
       { projectId: project.id }
     );
 
-    let totalInvested = 0;
-    let totalRealized = 0;
-    let totalFees = 0;
-    let positionQty = 0;
+    const position = createEmptyPosition();
     let lastPrice = 0;
-    let maxExposure = 0;
-    let maxLoss = 0;
 
     for (const signal of signals) {
       const action = signal.action;
@@ -37,27 +32,12 @@ async function main() {
       let netAmount = 0;
 
       if (action === 'BUY' && amount > 0 && price > 0) {
-        fee = round(amount * feeRate);
-        netAmount = round(amount + fee);
-        qty = round((amount - fee) / price, 12);
-
-        totalInvested = round(totalInvested + netAmount);
-        totalFees = round(totalFees + fee);
-        positionQty = round(positionQty + qty, 12);
+        ({ qty, fee, netAmount } = applyBuy(position, { amount, price, feeRate }));
       } else if (action === 'SELL' && amount > 0 && price > 0) {
-        qty = round(Math.min(positionQty, amount), 12);
-        const grossAmount = round(qty * price);
-        fee = round(grossAmount * feeRate);
-        netAmount = round(grossAmount - fee);
-
-        totalRealized = round(totalRealized + netAmount);
-        totalFees = round(totalFees + fee);
-        positionQty = round(positionQty - qty, 12);
+        ({ qty, fee, netAmount } = applySell(position, { qty: amount, price, feeRate }));
       }
 
-      const positionValue = round(positionQty * lastPrice);
-      maxExposure = Math.max(maxExposure, round(totalInvested - totalRealized));
-      maxLoss = Math.max(maxLoss, round(totalInvested - totalRealized - positionValue));
+      finalizePositionSnapshot(position, lastPrice);
 
       await query(
         `UPDATE trade_signals
@@ -74,7 +54,7 @@ async function main() {
       );
     }
 
-    const positionValue = round(positionQty * lastPrice);
+    finalizePositionSnapshot(position, lastPrice);
 
     await query(
       `UPDATE positions
@@ -83,22 +63,30 @@ async function main() {
               total_fees = :totalFees,
               position_qty = :positionQty,
               position_value = :positionValue,
+              position_cost = :positionCost,
+              avg_cost_price = :avgCostPrice,
+              realized_profit = :realizedProfit,
               max_exposure = :maxExposure,
               max_loss = :maxLoss
         WHERE project_id = :projectId`,
       {
         projectId: project.id,
-        totalInvested,
-        totalRealized,
-        totalFees,
-        positionQty,
-        positionValue,
-        maxExposure,
-        maxLoss
+        totalInvested: position.total_invested,
+        totalRealized: position.total_realized,
+        totalFees: position.total_fees,
+        positionQty: position.position_qty,
+        positionValue: position.position_value,
+        positionCost: position.position_cost,
+        avgCostPrice: position.avg_cost_price,
+        realizedProfit: position.realized_profit,
+        maxExposure: position.max_exposure,
+        maxLoss: position.max_loss
       }
     );
 
-    console.log(`Backfilled project ${project.id}: fees=${totalFees}, invested=${totalInvested}, realized=${totalRealized}, qty=${positionQty}`);
+    console.log(
+      `Backfilled project ${project.id}: invested=${position.total_invested}, realized=${position.total_realized}, qty=${position.position_qty}, cost=${position.position_cost}, realizedProfit=${position.realized_profit}`
+    );
   }
 }
 

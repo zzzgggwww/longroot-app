@@ -1,3 +1,6 @@
+/**
+ * 模块说明：认证服务：处理密码校验、JWT 签发、管理员种子账号创建等核心逻辑。
+ */
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../../db/pool.js';
@@ -24,6 +27,22 @@ export async function ensureAdminSeedUser() {
   );
 
   return { created: true, username: env.adminSeedUsername };
+}
+
+export async function getProfile(id) {
+  const rows = await query(
+    `SELECT id, username, role, status
+     FROM users WHERE id = :id LIMIT 1`,
+    { id }
+  );
+  const user = rows[0];
+  if (!user || !user.status) throw httpError(401, '用户不存在或已停用');
+  return {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    status: Number(user.status)
+  };
 }
 
 export async function login({ username, password }) {

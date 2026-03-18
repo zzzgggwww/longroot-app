@@ -1,3 +1,6 @@
+/**
+ * 模块说明：移动端明细列表：在手机端展示信号列表和指标列表。
+ */
 import React from 'react';
 import { List, Space, Typography } from 'antd';
 import { formatTime, money, signalTag, signalTradeMetrics } from '../../lib/formatters';

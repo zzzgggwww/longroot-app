@@ -1,3 +1,6 @@
+/**
+ * 模块说明：行情服务：负责从 Binance 拉取 K 线与最新价格。
+ */
 import { env } from '../../config/env.js';
 
 const INTERVAL_MAP = { H: '1h', D: '1d', W: '1w' };

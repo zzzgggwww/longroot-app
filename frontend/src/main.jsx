@@ -1,3 +1,6 @@
+/**
+ * 模块说明：前端入口文件：挂载 React 应用，并注入 Ant Design 全局配置。
+ */
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider, App as AntApp } from 'antd';

@@ -1,3 +1,6 @@
+/**
+ * 模块说明：行情同步控制器：暴露全量同步和单项目同步接口。
+ */
 import { asyncHandler } from '../../utils/async-handler.js';
 import { query } from '../../db/pool.js';
 import { syncAllProjectsMarket, syncProjectMarket } from './market.service.js';

@@ -1,3 +1,6 @@
+/**
+ * 模块说明：项目表单字段定义：集中定义项目参数字段和默认表单结构。
+ */
 export function projectFormColumns() {
   return [
     {

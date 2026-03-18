@@ -1,7 +1,10 @@
+/**
+ * 模块说明：移动端项目卡片列表：在小屏幕下替代表格展示项目信息和操作按钮。
+ */
 import React from 'react';
-import { PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { Button, Card, List, Space, Typography } from 'antd';
 import { money, signalTag, statusTag } from '../../lib/formatters';
+import { PauseGlyph, PlayGlyph } from '../../lib/icons';
 import { calcProjectProfit, calcProjectProfitRate } from '../../hooks/useProjectMetrics';
 
 const { Text } = Typography;
@@ -38,7 +41,7 @@ export default function ProjectCards({ projects, selectedProjectId, onSelect, on
                   <Text strong>{money(item.position_value)}</Text>
                 </div>
                 <div className="row-split">
-                  <Text>实际盈亏</Text>
+                  <Text>总收益</Text>
                   <Text strong style={{ color: profit > 0 ? '#16a34a' : profit < 0 ? '#dc2626' : undefined }}>
                     {`${profit > 0 ? '+' : ''}${money(profit)}`}
                   </Text>
@@ -54,7 +57,7 @@ export default function ProjectCards({ projects, selectedProjectId, onSelect, on
                   <Button size="small" disabled={!enabled} onClick={(e) => { e.stopPropagation(); onSync(item.id); }}>同步</Button>
                   <Button
                     size="small"
-                    icon={enabled ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                    icon={enabled ? <PauseGlyph /> : <PlayGlyph />}
                     loading={loading}
                     onClick={(e) => { e.stopPropagation(); onToggleStatus(item); }}
                   >

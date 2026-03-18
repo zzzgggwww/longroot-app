@@ -1,3 +1,6 @@
+/**
+ * 模块说明：项目控制器：处理项目列表、详情、信号、指标和 CRUD 接口。
+ */
 import { asyncHandler } from '../../utils/async-handler.js';
 import { createProject, deleteProject, getProjectById, listProjectIndicators, listProjectSignals, listProjects, updateProject } from './project.service.js';
 

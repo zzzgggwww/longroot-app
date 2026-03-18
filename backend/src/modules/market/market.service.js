@@ -1,12 +1,17 @@
+/**
+ * 模块说明：行情同步服务：串联行情获取、指标计算、仓位更新、信号落库。
+ */
 import { query } from '../../db/pool.js';
 import { env } from '../../config/env.js';
 import { fetchKlines, fetchTickerPrice } from './binance.service.js';
 import { calculateMacdSeries, evaluateSignal } from './macd.service.js';
+import { applyBuy, applySell, createEmptyPosition, finalizePositionSnapshot } from './pnl.service.js';
 
 function roundAmount(value, digits = 8) {
   return Number(Number(value || 0).toFixed(digits));
 }
 
+// 同步单个项目的市场数据：拉行情、算指标、评估信号、更新仓位、记录信号。
 export async function syncProjectMarket(project) {
   const klines = await fetchKlines(project.symbol, project.period);
   const closes = klines.map((item) => item.closePrice);
@@ -35,16 +40,9 @@ export async function syncProjectMarket(project) {
   const positionRows = await query('SELECT * FROM positions WHERE project_id = :projectId LIMIT 1', {
     projectId: project.id
   });
-  const position = positionRows[0] || {
-    total_invested: 0,
-    total_realized: 0,
-    total_fees: 0,
-    position_qty: 0,
-    position_value: 0,
-    max_exposure: 0,
-    max_loss: 0
-  };
+  const position = createEmptyPosition(positionRows[0] || {});
 
+  // 结合最新 MACD 指标与当前仓位，给出 BUY / SELL / HOLD 信号。
   const signal = evaluateSignal({
     latestIndicators: merged,
     positionValue: Number(position.position_value || 0),
@@ -61,30 +59,22 @@ export async function syncProjectMarket(project) {
   let netAmount = 0;
 
   if (signal.action === 'BUY' && currentPrice > 0) {
-    const grossAmount = Number(signal.amount || 0);
-    tradeFee = roundAmount(grossAmount * feeRate);
-    netAmount = roundAmount(grossAmount + tradeFee);
-    tradeQty = roundAmount((grossAmount - tradeFee) / currentPrice, 12);
-
-    position.total_invested = roundAmount(Number(position.total_invested || 0) + netAmount);
-    position.total_fees = roundAmount(Number(position.total_fees || 0) + tradeFee);
-    position.position_qty = roundAmount(Number(position.position_qty || 0) + tradeQty, 12);
+    ({ qty: tradeQty, fee: tradeFee, netAmount } = applyBuy(position, {
+      amount: Number(signal.amount || 0),
+      price: currentPrice,
+      feeRate
+    }));
   }
 
   if (signal.action === 'SELL' && signal.amount > 0 && currentPrice > 0) {
-    tradeQty = roundAmount(Math.min(Number(position.position_qty || 0), Number(signal.amount || 0)), 12);
-    const grossAmount = roundAmount(tradeQty * currentPrice);
-    tradeFee = roundAmount(grossAmount * feeRate);
-    netAmount = roundAmount(grossAmount - tradeFee);
-
-    position.total_realized = roundAmount(Number(position.total_realized || 0) + netAmount);
-    position.total_fees = roundAmount(Number(position.total_fees || 0) + tradeFee);
-    position.position_qty = roundAmount(Number(position.position_qty || 0) - tradeQty, 12);
+    ({ qty: tradeQty, fee: tradeFee, netAmount } = applySell(position, {
+      qty: Number(signal.amount || 0),
+      price: currentPrice,
+      feeRate
+    }));
   }
 
-  position.position_value = roundAmount(Number(position.position_qty || 0) * currentPrice);
-  position.max_exposure = Math.max(Number(position.max_exposure || 0), roundAmount(Number(position.total_invested || 0) - Number(position.total_realized || 0)));
-  position.max_loss = Math.max(Number(position.max_loss || 0), roundAmount(Number(position.total_invested || 0) - Number(position.total_realized || 0) - position.position_value));
+  finalizePositionSnapshot(position, currentPrice);
 
   await query(
     `UPDATE positions
@@ -93,6 +83,9 @@ export async function syncProjectMarket(project) {
          total_fees = :totalFees,
          position_qty = :positionQty,
          position_value = :positionValue,
+         position_cost = :positionCost,
+         avg_cost_price = :avgCostPrice,
+         realized_profit = :realizedProfit,
          max_exposure = :maxExposure,
          max_loss = :maxLoss
      WHERE project_id = :projectId`,
@@ -103,6 +96,9 @@ export async function syncProjectMarket(project) {
       totalFees: Number(position.total_fees || 0),
       positionQty: Number(position.position_qty || 0),
       positionValue: Number(position.position_value || 0),
+      positionCost: Number(position.position_cost || 0),
+      avgCostPrice: Number(position.avg_cost_price || 0),
+      realizedProfit: Number(position.realized_profit || 0),
       maxExposure: Number(position.max_exposure || 0),
       maxLoss: Number(position.max_loss || 0)
     }
