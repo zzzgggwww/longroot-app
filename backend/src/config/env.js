@@ -30,5 +30,7 @@ export const env = {
   binanceBaseUrl: process.env.BINANCE_BASE_URL ?? 'https://api.binance.com',
   marketSyncCron: process.env.MARKET_SYNC_CRON ?? '5 * * * *',
   marketBootstrapCandles: Number(process.env.MARKET_BOOTSTRAP_CANDLES ?? 120),
+  marketRequestRetryCount: Number(process.env.MARKET_REQUEST_RETRY_COUNT ?? 3),
+  marketRequestRetryDelayMs: Number(process.env.MARKET_REQUEST_RETRY_DELAY_MS ?? 500),
   binanceSpotTradingFeeRate: Number(process.env.BINANCE_SPOT_TRADING_FEE_RATE ?? 0.001)
 };

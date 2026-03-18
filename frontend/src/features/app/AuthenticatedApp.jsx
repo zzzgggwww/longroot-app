@@ -5,6 +5,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { App as AntApp, Spin } from 'antd';
 import { API_BASE, USER_KEY } from '../../lib/constants';
 import { useProjectMetrics } from '../../hooks/useProjectMetrics';
+import { formatTime } from '../../lib/formatters';
 
 const DashboardShell = lazy(() => import('../dashboard/DashboardShell'));
 const ProjectFormModal = lazy(() => import('../projects/ProjectFormModal'));
@@ -29,6 +30,7 @@ export default function AuthenticatedApp({ token, currentUser, setCurrentUser, o
   const [editRecord, setEditRecord] = useState(null);
   const [projectError, setProjectError] = useState('');
   const [detailError, setDetailError] = useState('');
+  const [syncMetaMap, setSyncMetaMap] = useState({});
 
   const metrics = useProjectMetrics(projects);
 
@@ -151,13 +153,26 @@ export default function AuthenticatedApp({ token, currentUser, setCurrentUser, o
     }
   }
 
+  function buildBackfillMessage(result) {
+    const count = Number(result?.backfilledCandles || 0);
+    if (count <= 0) return '无缺失区间，本次仅刷新最新数据';
+    const fromText = result?.lastSyncedAt ? `，从 ${formatTime(result.lastSyncedAt)} 之后开始补算` : '';
+    return `自动回填 ${count} 根 candle${fromText}`;
+  }
+
   async function syncAll() {
     setSyncLoading(true);
     try {
       const data = await request('/market/sync', { method: 'POST' });
-      const okCount = (data.results || []).filter((item) => item.ok).length;
+      const okResults = (data.results || []).filter((item) => item.ok);
+      const okCount = okResults.length;
       const failCount = (data.results || []).length - okCount;
-      message.success(`同步完成，成功 ${okCount} 个项目${failCount > 0 ? `，失败 ${failCount} 个` : ''}`);
+      const backfilledTotal = okResults.reduce((sum, item) => sum + Number(item?.result?.backfilledCandles || 0), 0);
+      const failedItems = (data.results || []).filter((item) => !item.ok);
+      message.success(`同步完成，成功 ${okCount} 个项目${failCount > 0 ? `，失败 ${failCount} 个` : ''}；本次共回填 ${backfilledTotal} 根 candle`);
+      if (failedItems.length) {
+        message.warning(`失败原因：${failedItems.map((item) => `${item.projectCode || item.projectId} - ${item.error}`).join('；')}`);
+      }
       await loadProjects(false);
       if (selectedProjectId) await loadProjectDetail(selectedProjectId);
     } catch (error) {
@@ -170,8 +185,15 @@ export default function AuthenticatedApp({ token, currentUser, setCurrentUser, o
   async function syncOne(id) {
     setSyncLoading(true);
     try {
-      await request(`/market/sync/${id}`, { method: 'POST' });
-      message.success('单项目同步完成');
+      const result = await request(`/market/sync/${id}`, { method: 'POST' });
+      setSyncMetaMap((prev) => ({
+        ...prev,
+        [id]: {
+          latest_sync_at: new Date().toISOString(),
+          latest_backfilled_candles: Number(result?.backfilledCandles || 0)
+        }
+      }));
+      message.success(`单项目同步完成：${buildBackfillMessage(result)}`);
       await loadProjects(false);
       await loadProjectDetail(id);
     } catch (error) {

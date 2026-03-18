@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button, Card, Input, Space, Typography } from 'antd';
 import { API_BASE } from '../../lib/constants';
-import { BrandMark, UserGlyph } from '../../lib/icons';
+import { BrandMark } from '../../lib/icons';
 
 const { Title, Text } = Typography;
 
@@ -35,7 +35,6 @@ export default function LoginView({ onLogin, loading }) {
             <Input
               id="login-username"
               size="large"
-              prefix={<UserGlyph />}
               placeholder="请输入用户名"
               value={username}
               onChange={(event) => setUsername(event.target.value)}

@@ -37,6 +37,9 @@ try {
   await ensureColumn('positions', 'position_cost', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER position_value');
   await ensureColumn('positions', 'avg_cost_price', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER position_cost');
   await ensureColumn('positions', 'realized_profit', 'DECIMAL(18,8) NOT NULL DEFAULT 0 AFTER avg_cost_price');
+  await ensureColumn('projects', 'latest_sync_at', 'DATETIME NULL AFTER status');
+  await ensureColumn('projects', 'latest_backfilled_candles', 'INT NOT NULL DEFAULT 0 AFTER latest_sync_at');
+  await ensureColumn('projects', 'latest_sync_error', 'TEXT NULL AFTER latest_backfilled_candles');
   console.log(`Database initialized from ${sqlPath}`);
 } finally {
   connection.release();

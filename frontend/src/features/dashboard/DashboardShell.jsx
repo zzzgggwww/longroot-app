@@ -18,7 +18,7 @@ import {
 import MetricGrid from './MetricGrid';
 import { AddGlyph, BrandMark, PauseGlyph, PlayGlyph, RefreshGlyph, SyncGlyph } from '../../lib/icons';
 import ProjectCards from '../projects/ProjectCards';
-import { money, signalTag, statusTag } from '../../lib/formatters';
+import { formatTime, money, signalTag, statusTag } from '../../lib/formatters';
 import { calcProjectProfit, calcProjectProfitRate } from '../../hooks/useProjectMetrics';
 
 const ProjectDetailPanel = lazy(() => import('./ProjectDetailPanel'));
@@ -85,6 +85,16 @@ export default function DashboardShell(props) {
     {
       title: '盈亏率', dataIndex: 'profit_rate', width: 120, align: 'right',
       render: (_, row) => renderPnl(calcProjectProfitRate(row) * 100, '%')
+    },
+    {
+      title: '最近同步/回填', dataIndex: 'latest_sync_at', width: 240,
+      render: (_, row) => (
+        <div>
+          <div><Text>{row.latest_sync_at ? formatTime(row.latest_sync_at) : '-'}</Text></div>
+          <Text type="secondary">{row.latest_backfilled_candles !== undefined ? `回填 ${Number(row.latest_backfilled_candles || 0)} 根` : '未记录'}</Text>
+          {row.latest_sync_error ? <div><Text type="danger">失败：{row.latest_sync_error}</Text></div> : null}
+        </div>
+      )
     },
     {
       title: '操作', key: 'actions', width: 280,
@@ -174,7 +184,7 @@ export default function DashboardShell(props) {
                     dataSource={projects}
                     locale={{ emptyText: <Empty description="暂无项目，可先创建一个" /> }}
                     pagination={{ pageSize: 8, showSizeChanger: false }}
-                    scroll={{ x: 1280 }}
+                    scroll={{ x: 1500 }}
                     rowClassName={(record) => (record.id === selectedProjectId ? 'selected-row' : '')}
                     onRow={(record) => ({ onClick: () => onLoadProjectDetail(record.id) })}
                   />
